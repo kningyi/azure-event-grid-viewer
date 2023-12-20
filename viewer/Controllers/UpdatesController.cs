@@ -118,7 +118,7 @@ namespace viewer.Controllers
                 gridEvent.EventType,
                 gridEvent.Subject,
                 gridEvent.EventTime.ToLongTimeString(),
-                JsonConvert.SerializeObject(data)
+                JsonConvert.SerializeObject(data, Formatting.Indented)
                 );
             ;
 
@@ -154,7 +154,7 @@ namespace viewer.Controllers
                     details.EventType,
                     details.Subject,
                     details.EventTime.ToLongTimeString(),
-                    JsonConvert.SerializeObject(data)
+                    JsonConvert.SerializeObject(data, Formatting.Indented)
                     );
             }
 
@@ -181,7 +181,7 @@ namespace viewer.Controllers
                 details.Type,
                 details.Subject,
                 details.Time,
-                JsonConvert.SerializeObject(data)
+                JsonConvert.SerializeObject(data, Formatting.Indented)
             );
 
             return Ok();
