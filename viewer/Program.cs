@@ -17,9 +17,7 @@ app.UseCookiePolicy();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapHub<GridEventsHub>("/hubs/gridevents");
-    endpoints.MapControllerRoute(
-            name: "default",
-            pattern: "{controller=Home}/{action=Index}/{id?}");
+    endpoints.MapControllers();
 });
 
 app.Run();
