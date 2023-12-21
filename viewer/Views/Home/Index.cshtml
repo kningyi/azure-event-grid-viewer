@@ -1,4 +1,4 @@
-﻿@{
+﻿﻿@{
     ViewData["Title"] = "Azure Event Grid Viewer";
 }
 
@@ -14,7 +14,9 @@
     </p>
 </div>
 <div style="clear: both;"></div>
-<hr /><br /><br />
+<hr />
+<br />
+<br />
 
 <table id="grid-events" class="table table-striped">
     <thead>
@@ -57,7 +59,7 @@
     <script src="~/js/hub.js" type="text/javascript"></script>
     <script>
         $(document).ready(function () {
-            watcherInit();
+            watcherInit("event-template", "grid-event-details", "clear-events");
         });
     </script>
 }
