@@ -7,8 +7,8 @@ var watcherClear = function (detailsId) {
 var watcherAddEvent = function (templateId, detailsId, id, eventType, subject, eventTime, data) {
 
   console.log("event added:", id);
-  var detailsElem = document.getElementById(detailsId);
-  var index = detailsElem.children.length;
+  var detailsElem = $('#' + detailsId);
+  var index = detailsElem.children().length;
 
   var context = {
     gridEventType: eventType,
