@@ -1,4 +1,5 @@
 var hubConnection;
+var connectionAttempts = 0;
 
 var watcherClear = function (detailsId) {
   $("#" + detailsId).children().remove();
@@ -38,7 +39,7 @@ var watcherInit = function (templateId, detailsId, clearId) {
   hubConnection = new signalR.HubConnectionBuilder()
     .withUrl("hubs/gridevents")
     .configureLogging(signalR.LogLevel.Information)
-    .withAutomaticReconnect()
+    //.withAutomaticReconnect()
     .build();
 
   // ensure handlers registered before connection
@@ -50,16 +51,16 @@ var watcherInit = function (templateId, detailsId, clearId) {
 
   async function startHub() {
     try {
+      connectionAttempts = connectionAttempts + 1;
       await hubConnection.start();
-      console.assert(connection.state === signalR.HubConnectionState.Connected);
       console.log("hub connected.");
     } catch (err) {
-      console.assert(connection.state === signalR.HubConnectionState.Disconnected);
       console.error(err);
-      setTimeout(() => startHub(), 5000);
+      setTimeout(() => startHub(), 5000 + connectionAttempts * 5000);
     }
   };
 
+  /*
   hubConnection.onreconnecting(error => {
     console.log(hubConnection.state);
     console.warn(`Connection lost due to error '${error}'. Reconnecting..`);
@@ -75,6 +76,14 @@ var watcherInit = function (templateId, detailsId, clearId) {
     console.error(`Connection closed due to error "${error}". Try refreshing this page to restart the connection.`);
     alert("Hub connection lost. Please refresh page.");
   });
+  */
+
+  hubConnection.onclose(async () => {
+    console.log("hub closed, reconnecting..");
+    await startHub();
+  });
+
+  // establish connection
 
   startHub();
 
