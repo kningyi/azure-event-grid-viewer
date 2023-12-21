@@ -1,15 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.IO;
-using System.Threading.Tasks;
-using System.Net;
-using System.Text;
-using System.Net.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using viewer.Hubs;
 using viewer.Models;
 
@@ -24,15 +22,15 @@ namespace viewer.Controllers
 
         #region Data Members
 
-        private readonly IHubContext<GridEventsHub> _hubContext;
+        private readonly IHubContext<GridEventsHub, IGridEventsHubClient> _hubContext;
 
         #endregion
 
         #region Constructors
 
-        public UpdatesController(IHubContext<GridEventsHub> gridEventsHubContext)
+        public UpdatesController(IHubContext<GridEventsHub, IGridEventsHubClient> hubContext)
         {
-            this._hubContext = gridEventsHubContext;
+            this._hubContext = hubContext;
         }
 
         #endregion
@@ -106,21 +104,19 @@ namespace viewer.Controllers
 
             var data = new
             {
-                jsonContent = jsonContent,
-                request = Request.Headers,
-                response = Response.Headers,
                 method = "HandleValidation",
+                itemContent = gridEvent,
+                rawContent = JsonConvert.DeserializeObject(jsonContent),
+                request = Request.Headers,
             };
 
-            await this._hubContext.Clients.All.SendAsync(
-                "gridupdate",
+            await this._hubContext.Clients.All.GridUpdate(
                 gridEvent.Id,
                 gridEvent.EventType,
                 gridEvent.Subject,
                 gridEvent.EventTime.ToLongTimeString(),
                 JsonConvert.SerializeObject(data)
-                );
-            ;
+            );
 
             // Retrieve the validation code and echo back.
             var validationCode = gridEvent.Data["validationCode"];
@@ -141,21 +137,19 @@ namespace viewer.Controllers
 
                 var data = new
                 {
-                    itemContent = details,
-                    jsonContent = jsonContent,
-                    request = Request.Headers,
-                    response = Response.Headers,
                     method = "HandleGridEvents",
+                    itemContent = details,
+                    rawContent = JsonConvert.DeserializeObject(jsonContent),
+                    request = Request.Headers,
                 };
 
-                await this._hubContext.Clients.All.SendAsync(
-                    "gridupdate",
+                await this._hubContext.Clients.All.GridUpdate(
                     details.Id,
                     details.EventType,
                     details.Subject,
                     details.EventTime.ToLongTimeString(),
                     JsonConvert.SerializeObject(data)
-                    );
+                );
             }
 
             return Ok();
@@ -164,19 +158,16 @@ namespace viewer.Controllers
         private async Task<IActionResult> HandleCloudEvent(string jsonContent)
         {
             var details = JsonConvert.DeserializeObject<CloudEvent<dynamic>>(jsonContent);
-            var eventData = JObject.Parse(jsonContent);
 
             var data = new
             {
-                itemContent = details,
-                jsonContent = jsonContent,
-                request = Request.Headers,
-                response = Response.Headers,
                 method = "HandleCloudEvent",
+                itemContent = details,
+                rawContent = JsonConvert.DeserializeObject(jsonContent),
+                request = Request.Headers,
             };
 
-            await this._hubContext.Clients.All.SendAsync(
-                "gridupdate",
+            await this._hubContext.Clients.All.GridUpdate(
                 details.Id,
                 details.Type,
                 details.Subject,
