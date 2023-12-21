@@ -1,14 +1,27 @@
+using Newtonsoft.Json;
 using System;
 
 namespace viewer.Models
 {
-    public class GridEvent<T> where T: class
+    public class GridEvent<T> : IEvent<T> where T: class
     {
-        public string Id { get; set;}
-        public string EventType { get; set;}
-        public string Subject {get; set;}
-        public DateTime EventTime { get; set; } 
-        public T Data { get; set; } 
-        public string Topic { get; set; }
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        [JsonProperty("eventType")]
+        public string Type { get; set; }
+
+        [JsonProperty("topic")]
+        public string Source { get; set; }
+
+        [JsonProperty("subject")]
+        public string Subject {get; set; }
+
+        [JsonProperty("eventTime")]
+        public DateTime Time { get; set; }
+
+        [JsonProperty("data")]
+        public T Data { get; set; }
+
     }
 }

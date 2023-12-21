@@ -114,9 +114,9 @@ namespace viewer.Controllers
                 new GridUpdateModel()
                 {
                     Id = gridEvent.Id,
-                    Type = gridEvent.EventType,
+                    Type = gridEvent.Type,
                     Subject = gridEvent.Subject,
-                    Time = gridEvent.EventTime.ToLongTimeString(),
+                    Time = gridEvent.Time.ToLongTimeString(),
                     Data = JsonConvert.SerializeObject(data, Formatting.Indented)
                 }
             );
@@ -150,9 +150,9 @@ namespace viewer.Controllers
                     new GridUpdateModel()
                     {
                         Id = details.Id,
-                        Type = details.EventType,
+                        Type = details.Type,
                         Subject = details.Subject,
-                        Time = details.EventTime.ToLongTimeString(),
+                        Time = details.Time.ToLongTimeString(),
                         Data = JsonConvert.SerializeObject(data, Formatting.Indented)
                     }
                 );
@@ -179,7 +179,7 @@ namespace viewer.Controllers
                     Id = details.Id,
                     Type = details.Type,
                     Subject = details.Subject,
-                    Time = details.Time,
+                    Time = details.Time.ToLongTimeString(),
                     Data = JsonConvert.SerializeObject(data, Formatting.Indented)
                 }
             );
