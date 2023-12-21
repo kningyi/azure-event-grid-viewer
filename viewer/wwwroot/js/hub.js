@@ -2,40 +2,37 @@ var hubConnection;
 var hubSessionId;
 var hubConnectionId;
 
-var watcherClear = function () {
-  $("#grid-events").find("tr:gt(0)").remove();
-  $("#grid-events").hide();
+var watcherClear = function (detailsId) {
+  $("#" + detailsId).children().remove();
 }
 
-var watcherAddEvent = function (id, eventType, subject, eventTime, data) {
+var watcherAddEvent = function (templateId, detailsId, id, eventType, subject, eventTime, data) {
 
   console.log("event added:", id);
-  var detailsElem = $('#grid-event-details');
-  var rows = document.getElementById('grid-event-details').children.length;
+  var detailsElem = document.getElementById(detailsId);
+  var index = detailsElem.children.length;
 
   var context = {
     gridEventType: eventType,
     gridEventTime: eventTime,
     gridEventSubject: subject,
-    gridEventId: id + rows,
+    gridEventId: id + index,
     gridEvent: data
   };
-  var source = document.getElementById('event-template').innerHTML;
+  var source = document.getElementById(templateId).innerHTML;
   var template = Handlebars.compile(source);
   var html = template(context);
 
-  $("#grid-events").show();
   detailsElem.prepend(html);
 }
 
-var watcherInit = function () {
+var watcherInit = function (templateId, detailsId, clearId) {
 
   console.log("init hub");
 
-  $("#grid-events").hide();
-  var clearEvents = document.getElementById('clear-events');
+  var clearEvents = document.getElementById(clearId);
   clearEvents.addEventListener('click', function () {
-    watcherClear();
+    watcherClear(detailsId);
   });
 
   // build connection
@@ -57,7 +54,7 @@ var watcherInit = function () {
 
   hubConnection.on('gridupdate', function (evt) {
     console.log(evt);
-    watcherAddEvent(evt.id, evt.type, evt.subject, evt.time, evt.data);
+    watcherAddEvent(templateId, detailsId, evt.id, evt.type, evt.subject, evt.time, evt.data);
   });
 
   async function startHub() {
