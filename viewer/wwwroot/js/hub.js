@@ -10,12 +10,14 @@ var watcherClear = function () {
 var watcherAddEvent = function (id, eventType, subject, eventTime, data) {
 
   console.log("event added:", id);
+  var detailsElem = $('#grid-event-details');
+  var rows = document.getElementById('grid-event-details').children.length;
 
   var context = {
     gridEventType: eventType,
     gridEventTime: eventTime,
     gridEventSubject: subject,
-    gridEventId: id,
+    gridEventId: id + rows,
     gridEvent: data
   };
   var source = document.getElementById('event-template').innerHTML;
@@ -23,7 +25,7 @@ var watcherAddEvent = function (id, eventType, subject, eventTime, data) {
   var html = template(context);
 
   $("#grid-events").show();
-  $('#grid-event-details').prepend(html);
+  detailsElem.prepend(html);
 }
 
 var watcherInit = function () {
