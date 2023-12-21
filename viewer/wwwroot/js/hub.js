@@ -33,14 +33,49 @@ var watcherInit = function (templateId, detailsId, clearId) {
     watcherClear(detailsId);
   });
 
+  // build connection
+
   hubConnection = new signalR.HubConnectionBuilder()
     .withUrl("hubs/gridevents")
     .configureLogging(signalR.LogLevel.Information)
+    .withAutomaticReconnect()
     .build();
 
-  hubConnection.start().catch(err => console.error(err.toString()));
+  // ensure handlers registered before connection
+
   hubConnection.on('gridupdate', function (evt) {
     console.log(evt);
     watcherAddEvent(templateId, detailsId, evt.id, evt.type, evt.subject, evt.time, evt.data);
   });
+
+  async function startHub() {
+    try {
+      await hubConnection.start();
+      console.assert(connection.state === signalR.HubConnectionState.Connected);
+      console.log("hub connected.");
+    } catch (err) {
+      console.assert(connection.state === signalR.HubConnectionState.Disconnected);
+      console.error(err);
+      setTimeout(() => startHub(), 5000);
+    }
+  };
+
+  hubConnection.onreconnecting(error => {
+    console.log(hubConnection.state);
+    console.warn(`Connection lost due to error '${error}'. Reconnecting..`);
+  });
+
+  hubConnection.onreconnected(connectionId => {
+    console.log(hubConnection.state);
+    console.log(`Connection reestablished. Connected with connectionId "${connectionId}".`);
+  });
+
+  hubConnection.onclose(error => {
+    console.log(hubConnection.state);
+    console.error(`Connection closed due to error "${error}". Try refreshing this page to restart the connection.`);
+    alert("Hub connection lost. Please refresh page.");
+  });
+
+  startHub();
+
 };
