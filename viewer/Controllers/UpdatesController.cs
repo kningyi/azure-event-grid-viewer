@@ -111,11 +111,14 @@ namespace viewer.Controllers
             };
 
             await this._hubContext.Clients.All.GridUpdate(
-                gridEvent.Id,
-                gridEvent.EventType,
-                gridEvent.Subject,
-                gridEvent.EventTime.ToLongTimeString(),
-                JsonConvert.SerializeObject(data)
+                new GridUpdateModel()
+                {
+                    Id = gridEvent.Id,
+                    Type = gridEvent.EventType,
+                    Subject = gridEvent.Subject,
+                    Time = gridEvent.EventTime.ToLongTimeString(),
+                    Data = JsonConvert.SerializeObject(data, Formatting.Indented)
+                }
             );
 
             // Retrieve the validation code and echo back.
@@ -144,11 +147,14 @@ namespace viewer.Controllers
                 };
 
                 await this._hubContext.Clients.All.GridUpdate(
-                    details.Id,
-                    details.EventType,
-                    details.Subject,
-                    details.EventTime.ToLongTimeString(),
-                    JsonConvert.SerializeObject(data)
+                    new GridUpdateModel()
+                    {
+                        Id = details.Id,
+                        Type = details.EventType,
+                        Subject = details.Subject,
+                        Time = details.EventTime.ToLongTimeString(),
+                        Data = JsonConvert.SerializeObject(data, Formatting.Indented)
+                    }
                 );
             }
 
@@ -168,11 +174,14 @@ namespace viewer.Controllers
             };
 
             await this._hubContext.Clients.All.GridUpdate(
-                details.Id,
-                details.Type,
-                details.Subject,
-                details.Time,
-                JsonConvert.SerializeObject(data)
+                new GridUpdateModel()
+                {
+                    Id = details.Id,
+                    Type = details.Type,
+                    Subject = details.Subject,
+                    Time = details.Time,
+                    Data = JsonConvert.SerializeObject(data, Formatting.Indented)
+                }
             );
 
             return Ok();

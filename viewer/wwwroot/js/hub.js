@@ -7,11 +7,11 @@ var watcherClear = function () {
 
 var watcherAddEvent = function (id, eventType, subject, eventTime, data) {
 
-  console.log("event added:");
-  console.log(data);
+  console.log("event added:", id);
 
   var context = {
     gridEventType: eventType,
+    gridEventTime: eventTime,
     gridEventSubject: subject,
     gridEventId: id,
     gridEvent: data
@@ -40,7 +40,8 @@ var watcherInit = function () {
     .build();
 
   hubConnection.start().catch(err => console.error(err.toString()));
-  hubConnection.on('gridupdate', function (id, eventType, subject, eventTime, data) {
-    watcherAddEvent(id, eventType, subject, eventTime, data);
+  hubConnection.on('gridupdate', function (evt) {
+    console.log(evt);
+    watcherAddEvent(evt.id, evt.type, evt.subject, evt.time, evt.data);
   });
 };

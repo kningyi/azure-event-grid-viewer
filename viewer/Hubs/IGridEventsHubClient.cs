@@ -1,9 +1,10 @@
 ﻿using System.Threading.Tasks;
+using viewer.Models;
 
 namespace viewer.Hubs
 {
     public interface IGridEventsHubClient
     {
-        Task GridUpdate(params string[] data);
+        Task GridUpdate(GridUpdateModel data);
     }
 }
