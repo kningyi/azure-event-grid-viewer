@@ -56,35 +56,64 @@ namespace viewer.Controllers
         [HttpPost]
         public async Task<IActionResult> Post()
         {
-            using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
+            if (!IsValidContentType(out bool isCloudEvent))
             {
-                var jsonContent = await reader.ReadToEndAsync();
-                var eventType = GetEventType();
+                return BadRequest();
+            }
 
-                // Check the event type.
-                // Return the validation code if it's 
-                // a subscription validation request. 
-                if (eventType == EventTypeSubscriptionValidation)
+            string jsonContent = string.Empty;
+            try
+            {
+                using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
                 {
-                    if (IsCloudEvent())
+                    jsonContent = await reader.ReadToEndAsync();
+                    var eventType = GetEventType();
+
+                    // Check the event type.
+                    // Return the validation code if it's 
+                    // a subscription validation request. 
+                    if (eventType == EventTypeSubscriptionValidation)
                     {
-                        return await HandleValidationForCloudEvent(jsonContent);
+                        if (isCloudEvent)
+                        {
+                            return await HandleValidationForCloudEvent(jsonContent);
+                        }
+                        return await HandleValidation(jsonContent);
                     }
-                    return await HandleValidation(jsonContent);
+                    else if (eventType == EventTypeNotification)
+                    {
+                        // Check to see if this is passed in using
+                        // the CloudEvents schema
+                        if (isCloudEvent)
+                        {
+                            return await HandleCloudEvent(jsonContent);
+                        }
+
+                        return await HandleGridEvents(jsonContent);
+                    }
+
+                    return BadRequest();
                 }
-                else if (eventType == EventTypeNotification)
+            }
+            catch (Exception ex)
+            {
+                var data = new
                 {
-                    // Check to see if this is passed in using
-                    // the CloudEvents schema
-                    if (IsCloudEvent())
+                    error = ex,
+                    rawContent = JsonConvert.DeserializeObject(jsonContent),
+                    request = Request.Headers,
+                };
+
+                await this._hubContext.Clients.All.GridUpdate(
+                    new GridUpdateModel()
                     {
-                        return await HandleCloudEvent(jsonContent);
+                        Type = ex.Message,
+                        Time = DateTime.Now.ToString(),
+                        Data = JsonConvert.SerializeObject(data, Formatting.Indented)
                     }
+                );
 
-                    return await HandleGridEvents(jsonContent);
-                }
-
-                return BadRequest();                
+                return BadRequest();
             }
         }
 
@@ -136,13 +165,13 @@ namespace viewer.Controllers
         private async Task<JsonResult> HandleValidationForCloudEvent(string jsonContent)
         {
             var gridEvent = jsonContent.TrimStart().StartsWith("[")
-                ? JsonConvert.DeserializeObject<List<CloudEvent<Dictionary<string, string>>>>(jsonContent).First()
-                : JsonConvert.DeserializeObject<CloudEvent<Dictionary<string, string>>>(jsonContent)
-                ;
+                    ? JsonConvert.DeserializeObject<List<CloudEvent<Dictionary<string, string>>>>(jsonContent).First()
+                    : JsonConvert.DeserializeObject<CloudEvent<Dictionary<string, string>>>(jsonContent)
+                    ;
 
             var data = new
             {
-                method = "HandleValidation",
+                method = "HandleValidationForCloudEvent",
                 itemContent = gridEvent,
                 rawContent = JsonConvert.DeserializeObject(jsonContent),
                 request = Request.Headers,
@@ -247,13 +276,19 @@ namespace viewer.Controllers
             return false;
         }
 
-        private bool IsCloudEvent()
+        private bool IsValidContentType(out bool isCloudEvent)
         {
             var requestHeaders = Request.Headers;
             if (requestHeaders.ContainsKey(HeaderNames.ContentType))
             {
-                return requestHeaders.ContentType.Any(x => x.StartsWith("application/cloudevents", StringComparison.OrdinalIgnoreCase));
+                var appContentType = requestHeaders.ContentType.FirstOrDefault(x => x.StartsWith("application/"))?.Substring(12);
+                if (!string.IsNullOrEmpty(appContentType) && appContentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+                {
+                    isCloudEvent = appContentType.StartsWith("cloudevents", StringComparison.OrdinalIgnoreCase);
+                    return true;
+                }
             }
+            isCloudEvent = false;
             return false;
         }
 
