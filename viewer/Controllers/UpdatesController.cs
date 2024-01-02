@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
@@ -72,7 +71,7 @@ namespace viewer.Controllers
                 {
                     // Check to see if this is passed in using
                     // the CloudEvents schema
-                    if (IsCloudEvent())
+                    if (IsCloudEvent(jsonContent))
                     {
                         return await HandleCloudEvent(jsonContent);
                     }
@@ -188,14 +187,26 @@ namespace viewer.Controllers
             return Ok();
         }
 
-        private bool IsCloudEvent()
+        private static bool IsCloudEvent(string jsonContent)
         {
-            if (!Request.Headers.ContainsKey("Content-Type"))
+            // Cloud events are sent one at a time, while Grid events
+            // are sent in an array. As a result, the JObject.Parse will 
+            // fail for Grid events. 
+            try
             {
-                return false;
+                // Attempt to read one JSON object. 
+                var eventData = JObject.Parse(jsonContent);
+
+                // Check for the spec version property.
+                var version = eventData["specversion"].Value<string>();
+                if (!string.IsNullOrEmpty(version)) return true;
             }
-            var headers = Request.Headers["Content-Type"];
-            return headers.Contains("application/cloudevents");
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+            return false;
         }
 
         #endregion
