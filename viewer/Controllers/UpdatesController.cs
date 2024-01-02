@@ -50,6 +50,20 @@ namespace viewer.Controllers
                 HttpContext.Response.Headers.Add("WebHook-Allowed-Origin", webhookRequestOrigin);
             }
 
+            var data = new GridUpdateModel()
+            {
+                Id = Guid.NewGuid().ToString(),
+                Type = "HttpOptions",
+                Time = DateTime.Now.ToString(),
+                Data = JsonConvert.SerializeObject(new
+                {
+                    Method = "Options",
+                    request = Request.Headers,
+                }, Formatting.Indented),
+            };
+
+            await SendMessage(data);
+
             return Ok();
         }
 
@@ -97,21 +111,20 @@ namespace viewer.Controllers
             }
             catch (Exception ex)
             {
-                var data = new
+                var data = new GridUpdateModel()
                 {
-                    error = ex,
-                    rawContent = JsonConvert.DeserializeObject(jsonContent),
-                    request = Request.Headers,
+                    Id = Guid.NewGuid().ToString(),
+                    Type = ex.Message,
+                    Time = DateTime.Now.ToString(),
+                    Data = JsonConvert.SerializeObject(new
+                    {
+                        error = ex,
+                        rawContent = JsonConvert.DeserializeObject(jsonContent),
+                        request = Request.Headers,
+                    }, Formatting.Indented),
                 };
 
-                await this._hubContext.Clients.All.GridUpdate(
-                    new GridUpdateModel()
-                    {
-                        Type = ex.Message,
-                        Time = DateTime.Now.ToString(),
-                        Data = JsonConvert.SerializeObject(data, Formatting.Indented)
-                    }
-                );
+                await SendMessage(data);
 
                 return BadRequest();
             }
@@ -130,29 +143,37 @@ namespace viewer.Controllers
             return null;
         }
 
+        private async Task SendMessage(GridUpdateModel data)
+        {
+            await this._hubContext.Clients.All.GridUpdate(data);
+            if (!string.IsNullOrEmpty(data.Subject))
+            {
+                data.Subject = string.Concat("Group - ", data.Subject);
+                await this._hubContext.Clients.Group(data.Subject).GridUpdate(data);
+            }
+        }
+
         private async Task<JsonResult> HandleValidation(string jsonContent)
         {
             IEvent<Dictionary<string, string>> gridEvent = 
                 JsonConvert.DeserializeObject<List<GridEvent<Dictionary<string, string>>>>(jsonContent).First();
 
-            var data = new
+            var data = new GridUpdateModel()
             {
-                method = "HandleValidation",
-                itemContent = gridEvent,
-                rawContent = JsonConvert.DeserializeObject(jsonContent),
-                request = Request.Headers,
+                Id = gridEvent.Id,
+                Type = gridEvent.Type,
+                Subject = gridEvent.Subject,
+                Time = gridEvent.Time.ToLongTimeString(),
+                Data = JsonConvert.SerializeObject(new
+                {
+                    method = "HandleValidation",
+                    itemContent = gridEvent,
+                    rawContent = JsonConvert.DeserializeObject(jsonContent),
+                    request = Request.Headers,
+                }, Formatting.Indented)
             };
 
-            await this._hubContext.Clients.All.GridUpdate(
-                new GridUpdateModel()
-                {
-                    Id = gridEvent.Id,
-                    Type = gridEvent.Type,
-                    Subject = gridEvent.Subject,
-                    Time = gridEvent.Time.ToLongTimeString(),
-                    Data = JsonConvert.SerializeObject(data, Formatting.Indented)
-                }
-            );
+            await SendMessage(data);
 
             // Retrieve the validation code and echo back.
             var validationCode = gridEvent.Data["validationCode"];
@@ -169,24 +190,22 @@ namespace viewer.Controllers
                     : JsonConvert.DeserializeObject<CloudEvent<Dictionary<string, string>>>(jsonContent)
                     ;
 
-            var data = new
+            var data = new GridUpdateModel()
             {
-                method = "HandleValidationForCloudEvent",
-                itemContent = gridEvent,
-                rawContent = JsonConvert.DeserializeObject(jsonContent),
-                request = Request.Headers,
+                Id = gridEvent.Id,
+                Type = gridEvent.Type,
+                Subject = gridEvent.Subject,
+                Time = gridEvent.Time.ToLongTimeString(),
+                Data = JsonConvert.SerializeObject(new
+                {
+                    method = "HandleValidationForCloudEvent",
+                    itemContent = gridEvent,
+                    rawContent = JsonConvert.DeserializeObject(jsonContent),
+                    request = Request.Headers,
+                }, Formatting.Indented)
             };
 
-            await this._hubContext.Clients.All.GridUpdate(
-                new GridUpdateModel()
-                {
-                    Id = gridEvent.Id,
-                    Type = gridEvent.Type,
-                    Subject = gridEvent.Subject,
-                    Time = gridEvent.Time.ToLongTimeString(),
-                    Data = JsonConvert.SerializeObject(data, Formatting.Indented)
-                }
-            );
+            await SendMessage(data);
 
             // Retrieve the validation code and echo back.
             var validationCode = gridEvent.Data["validationCode"];
@@ -205,24 +224,22 @@ namespace viewer.Controllers
                 // an event grid notiification.                 
                 var details = JsonConvert.DeserializeObject<GridEvent<dynamic>>(e.ToString());
 
-                var data = new
+                var data = new GridUpdateModel()
                 {
-                    method = "HandleGridEvents",
-                    itemContent = details,
-                    rawContent = JsonConvert.DeserializeObject(jsonContent),
-                    request = Request.Headers,
+                    Id = details.Id,
+                    Type = details.Type,
+                    Subject = details.Subject,
+                    Time = details.Time.ToLongTimeString(),
+                    Data = JsonConvert.SerializeObject(new
+                    {
+                        method = "HandleGridEvents",
+                        itemContent = details,
+                        rawContent = JsonConvert.DeserializeObject(jsonContent),
+                        request = Request.Headers,
+                    }, Formatting.Indented),
                 };
 
-                await this._hubContext.Clients.All.GridUpdate(
-                    new GridUpdateModel()
-                    {
-                        Id = details.Id,
-                        Type = details.Type,
-                        Subject = details.Subject,
-                        Time = details.Time.ToLongTimeString(),
-                        Data = JsonConvert.SerializeObject(data, Formatting.Indented)
-                    }
-                );
+                await SendMessage(data);
             }
 
             return Ok();
@@ -232,24 +249,22 @@ namespace viewer.Controllers
         {
             var details = JsonConvert.DeserializeObject<CloudEvent<dynamic>>(jsonContent);
 
-            var data = new
+            var data = new GridUpdateModel()
             {
-                method = "HandleCloudEvent",
-                itemContent = details,
-                rawContent = JsonConvert.DeserializeObject(jsonContent),
-                request = Request.Headers,
+                Id = details.Id,
+                Type = details.Type,
+                Subject = details.Subject,
+                Time = details.Time.ToLongTimeString(),
+                Data = JsonConvert.SerializeObject(new
+                {
+                    method = "HandleCloudEvent",
+                    itemContent = details,
+                    rawContent = JsonConvert.DeserializeObject(jsonContent),
+                    request = Request.Headers,
+                }, Formatting.Indented),
             };
 
-            await this._hubContext.Clients.All.GridUpdate(
-                new GridUpdateModel()
-                {
-                    Id = details.Id,
-                    Type = details.Type,
-                    Subject = details.Subject,
-                    Time = details.Time.ToLongTimeString(),
-                    Data = JsonConvert.SerializeObject(data, Formatting.Indented)
-                }
-            );
+            await SendMessage(data);
 
             return Ok();
         }
