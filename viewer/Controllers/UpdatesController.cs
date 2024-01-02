@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -107,6 +108,9 @@ namespace viewer.Controllers
                 method = "HandleValidation",
                 itemContent = gridEvent,
                 rawContent = JsonConvert.DeserializeObject(jsonContent),
+                containsKey = Request.Headers.ContainsKey(HeaderNames.ContentType),
+                contentType = Request.Headers.ContentType,
+                isCloudEvent = Request.Headers.ContentType.Any(x => x.StartsWith("application/cloudevents", StringComparison.OrdinalIgnoreCase)),
                 request = Request.Headers,
             };
 
@@ -143,6 +147,9 @@ namespace viewer.Controllers
                     method = "HandleGridEvents",
                     itemContent = details,
                     rawContent = JsonConvert.DeserializeObject(jsonContent),
+                    containsKey = Request.Headers.ContainsKey(HeaderNames.ContentType),
+                    contentType = Request.Headers.ContentType,
+                    isCloudEvent = Request.Headers.ContentType.Any(x => x.StartsWith("application/cloudevents", StringComparison.OrdinalIgnoreCase)),
                     request = Request.Headers,
                 };
 
@@ -170,6 +177,9 @@ namespace viewer.Controllers
                 method = "HandleCloudEvent",
                 itemContent = details,
                 rawContent = JsonConvert.DeserializeObject(jsonContent),
+                containsKey = Request.Headers.ContainsKey(HeaderNames.ContentType),
+                contentType = Request.Headers.ContentType,
+                isCloudEvent = Request.Headers.ContentType.Any(x => x.StartsWith("application/cloudevents", StringComparison.OrdinalIgnoreCase)),
                 request = Request.Headers,
             };
 
