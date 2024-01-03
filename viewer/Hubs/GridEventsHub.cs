@@ -8,6 +8,17 @@ namespace viewer.Hubs
 {
     public class GridEventsHub : Hub<IGridEventsHubClient>
     {
+        private readonly JsonSerializerSettings jsonSerializerSettings;
+
+        public GridEventsHub()
+        {
+            jsonSerializerSettings = new JsonSerializerSettings()
+            {
+                NullValueHandling = NullValueHandling.Ignore,
+                DefaultValueHandling = DefaultValueHandling.Ignore,
+            };
+        }
+
         public async Task SendMessage(string message)
         {
             await Clients.All.GridUpdate(new GridUpdateModel()
@@ -19,7 +30,8 @@ namespace viewer.Hubs
                 Data = JsonConvert.SerializeObject(new
                 {
                     ConnectionId = Context.ConnectionId,
-                }, Formatting.Indented),
+                    UserId = Context.UserIdentifier,
+                }, Formatting.Indented, jsonSerializerSettings),
             });
             ;
         }
@@ -38,8 +50,8 @@ namespace viewer.Hubs
                     ConnectionId = Context.ConnectionId,
                     User = Context.User,
                     UserId = Context.UserIdentifier,
-                    Items = Context.Items,
-                }, Formatting.Indented),
+                    Features = Context.Features,
+                }, Formatting.Indented, jsonSerializerSettings),
             });
         }
 
@@ -57,7 +69,7 @@ namespace viewer.Hubs
                     User = Context.User,
                     UserId = Context.UserIdentifier,
                     Items = Context.Items,
-                }, Formatting.Indented),
+                }, Formatting.Indented, jsonSerializerSettings),
             });
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, subject);
         }
