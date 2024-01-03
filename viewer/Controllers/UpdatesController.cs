@@ -126,7 +126,7 @@ namespace viewer.Controllers
 
                 await SendMessage(data);
 
-                return BadRequest();
+                return Problem(ex.Message);
             }
         }
 
@@ -247,24 +247,50 @@ namespace viewer.Controllers
 
         private async Task<IActionResult> HandleCloudEvent(string jsonContent)
         {
-            var details = JsonConvert.DeserializeObject<CloudEvent<dynamic>>(jsonContent);
-
-            var data = new GridUpdateModel()
+            if (jsonContent.TrimStart().StartsWith('['))
             {
-                Id = details.Id,
-                Type = details.Type,
-                Subject = details.Subject,
-                Time = details.Time.ToLongTimeString(),
-                Data = JsonConvert.SerializeObject(new
+                var detailCollection = JsonConvert.DeserializeObject<IEnumerable<CloudEvent<dynamic>>>(jsonContent);
+                foreach(var details in detailCollection)
                 {
-                    method = "HandleCloudEvent",
-                    itemContent = details,
-                    rawContent = JsonConvert.DeserializeObject(jsonContent),
-                    request = Request.Headers,
-                }, Formatting.Indented),
-            };
+                    var data = new GridUpdateModel()
+                    {
+                        Id = details.Id,
+                        Type = details.Type,
+                        Subject = details.Subject,
+                        Time = details.Time.ToLongTimeString(),
+                        Data = JsonConvert.SerializeObject(new
+                        {
+                            method = "HandleCloudEvent",
+                            itemContent = details,
+                            rawContent = JsonConvert.DeserializeObject(jsonContent),
+                            request = Request.Headers,
+                        }, Formatting.Indented),
+                    };
+                    await SendMessage(data);
+                }
+            }
+            else
+            {
+                var details = JsonConvert.DeserializeObject<CloudEvent<dynamic>>(jsonContent);
 
-            await SendMessage(data);
+                var data = new GridUpdateModel()
+                {
+                    Id = details.Id,
+                    Type = details.Type,
+                    Subject = details.Subject,
+                    Time = details.Time.ToLongTimeString(),
+                    Data = JsonConvert.SerializeObject(new
+                    {
+                        method = "HandleCloudEvent",
+                        itemContent = details,
+                        rawContent = JsonConvert.DeserializeObject(jsonContent),
+                        request = Request.Headers,
+                    }, Formatting.Indented),
+                };
+
+                await SendMessage(data);
+            }
+
 
             return Ok();
         }
