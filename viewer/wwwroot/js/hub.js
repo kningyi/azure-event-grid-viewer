@@ -25,7 +25,7 @@ var watcherAddEvent = function (templateId, detailsId, id, eventType, subject, e
   detailsElem.prepend(html);
 }
 
-var watcherInit = function (templateId, detailsId, clearId) {
+var watcherInit = function (templateId, detailsId, subscriberId, clearId) {
 
   console.log("init hub");
 
@@ -47,6 +47,28 @@ var watcherInit = function (templateId, detailsId, clearId) {
   hubConnection.on('gridupdate', function (evt) {
     console.log(evt);
     watcherAddEvent(templateId, detailsId, evt.id, evt.type, evt.subject, evt.time, evt.data);
+  });
+
+  var subscribeDiv = document.getElementById(subscriberId);
+  var subscribeInput = document.createElement('input');
+  subscribeInput.setAttribute('type', 'text');
+  subscribeInput.setAttribute('id', 'subscribeInput');
+  subscribeDiv.appendChild(subscribeInput);
+  var subscribeButton = document.createElement('button');
+  subscribeButton.textContent = 'Subscribe';
+  subscribeDiv.appendChild(subscribeButton);
+  subscribeButton.addEventListener("click", async (event) => {
+    var val = document.getElementById("subscribeInput").value;
+    if (val) {
+      console.log("Sending message", val);
+      try {
+        await connection.invoke("SendMessage", val);
+      }
+      catch (e) {
+        console.error(e);
+      }
+    }
+    event.preventDefault();
   });
 
   async function startHub() {

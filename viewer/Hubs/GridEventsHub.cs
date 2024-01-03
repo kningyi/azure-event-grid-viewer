@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 using System;
@@ -9,6 +8,22 @@ namespace viewer.Hubs
 {
     public class GridEventsHub : Hub<IGridEventsHubClient>
     {
+        public async Task SendMessage(string message)
+        {
+            await Clients.All.GridUpdate(new GridUpdateModel()
+            {
+                Id = Guid.NewGuid().ToString(),
+                Type = "Message",
+                Subject = message,
+                Time = DateTime.Now.ToString(),
+                Data = JsonConvert.SerializeObject(new
+                {
+                    ConnectionId = Context.ConnectionId,
+                }, Formatting.Indented),
+            });
+            ;
+        }
+
         public async Task Subscribe(string subject)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, subject);

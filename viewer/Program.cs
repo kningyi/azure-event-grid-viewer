@@ -6,7 +6,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
-builder.Services.AddSignalR();
+//builder.Services.AddSignalR();
+
+builder.Services.AddSignalR(options => {
+        options.EnableDetailedErrors = true; 
+    }
+);
 
 var app = builder.Build();
 app.UseHttpsRedirection();
