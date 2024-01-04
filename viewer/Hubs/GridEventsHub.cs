@@ -31,6 +31,25 @@ namespace viewer.Hubs
                 {
                     ConnectionId = Context.ConnectionId,
                     UserId = Context.UserIdentifier,
+                    User = Context.User,
+                }, Formatting.Indented, jsonSerializerSettings),
+            });
+            ;
+        }
+
+        public async Task SendMessage2(string message)
+        {
+            await Clients.All.GridUpdate(new GridUpdateModel()
+            {
+                Id = Guid.NewGuid().ToString(),
+                Type = "Message2",
+                Subject = message,
+                Time = DateTime.Now.ToString(),
+                Data = JsonConvert.SerializeObject(new
+                {
+                    ConnectionId = Context.ConnectionId,
+                    UserId = Context.UserIdentifier,
+                    Features = Context.Features,
                 }, Formatting.Indented, jsonSerializerSettings),
             });
             ;
@@ -48,7 +67,6 @@ namespace viewer.Hubs
                 Data = JsonConvert.SerializeObject(new
                 {
                     ConnectionId = Context.ConnectionId,
-                    User = Context.User,
                     UserId = Context.UserIdentifier,
                     Features = Context.Features,
                 }, Formatting.Indented, jsonSerializerSettings),
@@ -66,7 +84,6 @@ namespace viewer.Hubs
                 Data = JsonConvert.SerializeObject(new
                 {
                     ConnectionId = Context.ConnectionId,
-                    User = Context.User,
                     UserId = Context.UserIdentifier,
                     Items = Context.Items,
                 }, Formatting.Indented, jsonSerializerSettings),

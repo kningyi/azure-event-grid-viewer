@@ -62,7 +62,7 @@ var watcherInit = function (templateId, detailsId, subscriberId, clearId) {
     if (val) {
       console.log("Sending message", val);
       try {
-        await connection.invoke("SendMessage", val);
+        await hubConnection.invoke("SendMessage", val);
       }
       catch (e) {
         console.error(e);
