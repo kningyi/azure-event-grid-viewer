@@ -27,11 +27,12 @@ namespace viewer.Hubs
                 Type = "Message",
                 Subject = message,
                 Time = DateTime.Now.ToString(),
-                Data = JsonConvert.SerializeObject(new
+                Data = JsonConvert.SerializeObject(new IdentityModel()
                 {
                     ConnectionId = Context.ConnectionId,
+                    User = Context.User?.Identity,
                     UserId = Context.UserIdentifier,
-                    User = Context.User,
+                    Items = Context.Items,
                 }, Formatting.Indented, jsonSerializerSettings),
             });
             ;
@@ -49,7 +50,7 @@ namespace viewer.Hubs
                 {
                     ConnectionId = Context.ConnectionId,
                     UserId = Context.UserIdentifier,
-                    Features = Context.Features,
+                    Items = Context.Items.Keys,
                 }, Formatting.Indented, jsonSerializerSettings),
             });
             ;
@@ -68,7 +69,6 @@ namespace viewer.Hubs
                 {
                     ConnectionId = Context.ConnectionId,
                     UserId = Context.UserIdentifier,
-                    Features = Context.Features,
                 }, Formatting.Indented, jsonSerializerSettings),
             });
         }
@@ -85,7 +85,6 @@ namespace viewer.Hubs
                 {
                     ConnectionId = Context.ConnectionId,
                     UserId = Context.UserIdentifier,
-                    Items = Context.Items,
                 }, Formatting.Indented, jsonSerializerSettings),
             });
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, subject);
