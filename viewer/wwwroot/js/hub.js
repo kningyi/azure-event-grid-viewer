@@ -25,6 +25,50 @@ var watcherAddEvent = function (templateId, detailsId, id, eventType, subject, e
   detailsElem.prepend(html);
 }
 
+var watcherAddSubscriber = function (connection, subscriberId) {
+
+  var subscribeDiv = document.getElementById(subscriberId);
+
+  var subscribeInput = document.createElement('input');
+  subscribeInput.setAttribute('type', 'text');
+  subscribeInput.setAttribute('id', 'subscribeInput');
+  subscribeDiv.appendChild(subscribeInput);
+
+  var subscribeButton = document.createElement('button');
+  subscribeButton.textContent = 'Subscribe';
+  subscribeDiv.appendChild(subscribeButton);
+  subscribeButton.addEventListener("click", async (event) => {
+    var val = document.getElementById("subscribeInput").value;
+    if (val) {
+      console.log("Subscribing to", val);
+      try {
+        await connection.invoke("Subscribe", val);
+      }
+      catch (e) {
+        console.error(e);
+      }
+    }
+    event.preventDefault();
+  });
+
+  var unsubButton = document.createElement('button');
+  unsubButton.textContent = 'Unsubscribe';
+  subscribeDiv.appendChild(unsubButton);
+  unsubButton.addEventListener("click", async (event) => {
+    var val = document.getElementById("subscribeInput").value;
+    if (val) {
+      console.log("Unsubscribing from", val);
+      try {
+        await connection.invoke("Unsubscribe", val);
+      }
+      catch (e) {
+        console.error(e);
+      }
+    }
+    event.preventDefault();
+  });
+}
+
 var watcherInit = function (templateId, detailsId, subscriberId, clearId) {
 
   console.log("init hub");
@@ -49,27 +93,7 @@ var watcherInit = function (templateId, detailsId, subscriberId, clearId) {
     watcherAddEvent(templateId, detailsId, evt.id, evt.type, evt.subject, evt.time, evt.data);
   });
 
-  var subscribeDiv = document.getElementById(subscriberId);
-  var subscribeInput = document.createElement('input');
-  subscribeInput.setAttribute('type', 'text');
-  subscribeInput.setAttribute('id', 'subscribeInput');
-  subscribeDiv.appendChild(subscribeInput);
-  var subscribeButton = document.createElement('button');
-  subscribeButton.textContent = 'Subscribe';
-  subscribeDiv.appendChild(subscribeButton);
-  subscribeButton.addEventListener("click", async (event) => {
-    var val = document.getElementById("subscribeInput").value;
-    if (val) {
-      console.log("Sending message", val);
-      try {
-        await hubConnection.invoke("SendMessage", val);
-      }
-      catch (e) {
-        console.error(e);
-      }
-    }
-    event.preventDefault();
-  });
+  watcherAddSubscriber(hubConnection, subscriberId);
 
   async function startHub() {
     try {

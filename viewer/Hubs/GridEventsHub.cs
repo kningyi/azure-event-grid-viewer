@@ -19,43 +19,6 @@ namespace viewer.Hubs
             };
         }
 
-        public async Task SendMessage(string message)
-        {
-            await Clients.All.GridUpdate(new GridUpdateModel()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "Message",
-                Subject = message,
-                Time = DateTime.Now.ToString(),
-                Data = JsonConvert.SerializeObject(new IdentityModel()
-                {
-                    ConnectionId = Context.ConnectionId,
-                    User = Context.User?.Identity,
-                    UserId = Context.UserIdentifier,
-                    Items = Context.Items,
-                }, Formatting.Indented, jsonSerializerSettings),
-            });
-            ;
-        }
-
-        public async Task SendMessage2(string message)
-        {
-            await Clients.All.GridUpdate(new GridUpdateModel()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Type = "Message2",
-                Subject = message,
-                Time = DateTime.Now.ToString(),
-                Data = JsonConvert.SerializeObject(new
-                {
-                    ConnectionId = Context.ConnectionId,
-                    UserId = Context.UserIdentifier,
-                    Items = Context.Items.Keys,
-                }, Formatting.Indented, jsonSerializerSettings),
-            });
-            ;
-        }
-
         public async Task Subscribe(string subject)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, subject);
@@ -65,11 +28,12 @@ namespace viewer.Hubs
                 Type = "Subject Subscription",
                 Subject = subject,
                 Time = DateTime.Now.ToString(),
-                Data = JsonConvert.SerializeObject(new
+                Data = JsonConvert.SerializeObject(new IdentityModel()
                 {
                     ConnectionId = Context.ConnectionId,
+                    User = Context.User?.Identity,
                     UserId = Context.UserIdentifier,
-                }, Formatting.Indented, jsonSerializerSettings),
+                }, Formatting.Indented),
             });
         }
 
@@ -81,9 +45,10 @@ namespace viewer.Hubs
                 Type = "Subject Unsubscription",
                 Subject = subject,
                 Time = DateTime.Now.ToString(),
-                Data = JsonConvert.SerializeObject(new
+                Data = JsonConvert.SerializeObject(new IdentityModel()
                 {
                     ConnectionId = Context.ConnectionId,
+                    User = Context.User?.Identity,
                     UserId = Context.UserIdentifier,
                 }, Formatting.Indented, jsonSerializerSettings),
             });

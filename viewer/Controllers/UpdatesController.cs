@@ -148,8 +148,9 @@ namespace viewer.Controllers
             await this._hubContext.Clients.All.GridUpdate(data);
             if (!string.IsNullOrEmpty(data.Subject))
             {
+                var group = data.Subject;
                 data.Subject = string.Concat("Group - ", data.Subject);
-                await this._hubContext.Clients.Group(data.Subject).GridUpdate(data);
+                await this._hubContext.Clients.Group(group).GridUpdate(data);
             }
         }
 
