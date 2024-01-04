@@ -68,46 +68,41 @@ namespace viewer.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post()
+        public async Task<IActionResult> Post([FromBody] string jsonContent)
         {
-            if (!IsValidContentType(out bool isCloudEvent))
+            if (string.IsNullOrEmpty(jsonContent) || !IsValidContentType(out bool isCloudEvent))
             {
                 return BadRequest();
             }
 
-            string jsonContent = string.Empty;
             try
             {
-                using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
+                var eventType = GetEventType();
+
+                // Check the event type.
+                // Return the validation code if it's 
+                // a subscription validation request. 
+                if (eventType == EventTypeSubscriptionValidation)
                 {
-                    jsonContent = await reader.ReadToEndAsync();
-                    var eventType = GetEventType();
-
-                    // Check the event type.
-                    // Return the validation code if it's 
-                    // a subscription validation request. 
-                    if (eventType == EventTypeSubscriptionValidation)
+                    if (isCloudEvent)
                     {
-                        if (isCloudEvent)
-                        {
-                            return await HandleValidationForCloudEvent(jsonContent);
-                        }
-                        return await HandleValidation(jsonContent);
+                        return await HandleValidationForCloudEvent(jsonContent);
                     }
-                    else if (eventType == EventTypeNotification)
-                    {
-                        // Check to see if this is passed in using
-                        // the CloudEvents schema
-                        if (isCloudEvent)
-                        {
-                            return await HandleCloudEvent(jsonContent);
-                        }
-
-                        return await HandleGridEvents(jsonContent);
-                    }
-
-                    return BadRequest();
+                    return await HandleValidation(jsonContent);
                 }
+                else if (eventType == EventTypeNotification)
+                {
+                    // Check to see if this is passed in using
+                    // the CloudEvents schema
+                    if (isCloudEvent)
+                    {
+                        return await HandleCloudEvent(jsonContent);
+                    }
+
+                    return await HandleGridEvents(jsonContent);
+                }
+
+                return BadRequest();
             }
             catch (Exception ex)
             {

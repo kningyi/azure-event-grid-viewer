@@ -8,17 +8,6 @@ namespace viewer.Hubs
 {
     public class GridEventsHub : Hub<IGridEventsHubClient>
     {
-        private readonly JsonSerializerSettings jsonSerializerSettings;
-
-        public GridEventsHub()
-        {
-            jsonSerializerSettings = new JsonSerializerSettings()
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                DefaultValueHandling = DefaultValueHandling.Ignore,
-            };
-        }
-
         public async Task Subscribe(string subject)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, subject);
@@ -50,7 +39,7 @@ namespace viewer.Hubs
                     ConnectionId = Context.ConnectionId,
                     User = Context.User?.Identity,
                     UserId = Context.UserIdentifier,
-                }, Formatting.Indented, jsonSerializerSettings),
+                }, Formatting.Indented),
             });
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, subject);
         }
