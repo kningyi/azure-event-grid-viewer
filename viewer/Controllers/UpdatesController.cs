@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
+using System.Text;
 using System.Threading.Tasks;
 using viewer.Hubs;
 using viewer.Models;
@@ -36,83 +38,90 @@ namespace viewer.Controllers
         /// cloud event subscription validation
         /// </summary>
         [HttpOptions]
-        public async Task<IActionResult> Options([FromBody] string content = null)
+        public async Task<IActionResult> Options()
         {
-            var requestHeaders = HttpContext.Request.Headers;
-            var webhookRequestOrigin = requestHeaders["WebHook-Request-Origin"].FirstOrDefault();
-            var webhookRequestCallback = requestHeaders["WebHook-Request-Callback"];
-            var webhookRequestRate = requestHeaders["WebHook-Request-Rate"];
-
-            HttpContext.Response.Headers.Add("WebHook-Allowed-Rate", "*");
-            HttpContext.Response.Headers.Add("WebHook-Allowed-Origin", webhookRequestOrigin);
-
-            var data = new GridUpdateModel()
+            using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
             {
-                Id = Guid.NewGuid().ToString(),
-                Type = "HttpOptions",
-                Time = DateTime.Now.ToString(),
-                Data = JsonConvert.SerializeObject(new
-                {
-                    Method = "Options",
-                    request = requestHeaders,
-                    Content = content,
-                }, Formatting.Indented),
-            };
+                var requestHeaders = HttpContext.Request.Headers;
+                var webhookRequestOrigin = requestHeaders["WebHook-Request-Origin"].FirstOrDefault();
+                var webhookRequestCallback = requestHeaders["WebHook-Request-Callback"];
+                var webhookRequestRate = requestHeaders["WebHook-Request-Rate"];
 
-            await SendMessage(data);
+                HttpContext.Response.Headers.Add("WebHook-Allowed-Rate", "*");
+                HttpContext.Response.Headers.Add("WebHook-Allowed-Origin", webhookRequestOrigin);
+
+                var data = new GridUpdateModel()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Type = "HttpOptions",
+                    Time = DateTime.Now.ToString(),
+                    Data = JsonConvert.SerializeObject(new
+                    {
+                        Method = "Options",
+                        request = requestHeaders,
+                    }, Formatting.Indented),
+                };
+
+                await SendMessage(data);
+            }
 
             return Ok();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] string jsonContent)
+        public async Task<IActionResult> Post()
         {
-            // invalid content type
-            if (string.IsNullOrEmpty(jsonContent) || !IsValidContentType(out bool isCloudEvent))
+            using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
             {
-                return BadRequest();
-            }
+                var jsonContent = await reader.ReadToEndAsync();
 
-            try
-            {
-                // resolve cloud event notifications
-                if (isCloudEvent)
+                // invalid content type
+                if (string.IsNullOrEmpty(jsonContent) || !IsValidContentType(out bool isCloudEvent))
                 {
-                    return await HandleCloudEvents(jsonContent);
+                    return BadRequest();
                 }
 
-                // fallback to resolve azure event grid notifications/subscription validation
-                var eventType = GetAzureEventType();
-                if (eventType == "Notification")
+                try
                 {
-                    return await HandleGridEvents(jsonContent);
-                }
-                else if (eventType == "SubscriptionValidation")
-                {
-                    return await HandleValidation(jsonContent);
-                }
-
-                // invalid content
-                return BadRequest();
-            }
-            catch (Exception ex)
-            {
-                var data = new GridUpdateModel()
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Type = ex.Message,
-                    Time = DateTime.Now.ToString(),
-                    Data = JsonConvert.SerializeObject(new
+                    // resolve cloud event notifications
+                    if (isCloudEvent)
                     {
-                        error = ex,
-                        rawContent = JsonConvert.DeserializeObject(jsonContent),
-                        request = Request.Headers,
-                    }, Formatting.Indented),
-                };
+                        return await HandleCloudEvents(jsonContent);
+                    }
 
-                await SendMessage(data);
+                    // fallback to resolve azure event grid notifications/subscription validation
+                    var eventType = GetAzureEventType();
+                    if (eventType == "Notification")
+                    {
+                        return await HandleGridEvents(jsonContent);
+                    }
+                    else if (eventType == "SubscriptionValidation")
+                    {
+                        return await HandleValidation(jsonContent);
+                    }
 
-                return Problem(ex.Message);
+                    // invalid content
+                    return BadRequest();
+                }
+                catch (Exception ex)
+                {
+                    var data = new GridUpdateModel()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Type = ex.Message,
+                        Time = DateTime.Now.ToString(),
+                        Data = JsonConvert.SerializeObject(new
+                        {
+                            error = ex,
+                            rawContent = JsonConvert.DeserializeObject(jsonContent),
+                            request = Request.Headers,
+                        }, Formatting.Indented),
+                    };
+
+                    await SendMessage(data);
+
+                    return Problem(ex.Message);
+                }
             }
         }
 
