@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 using viewer.Hubs;
@@ -19,13 +18,13 @@ namespace viewer.Controllers
     {
         #region Data Members
 
-        private readonly IHubContext<GridEventsHub, IGridEventsHubClient> _hubContext;
+        private readonly IHubContext<AbstractGridEventsHub, IGridEventsHubClient> _hubContext;
 
         #endregion
 
         #region Constructors
 
-        public UpdatesController(IHubContext<GridEventsHub, IGridEventsHubClient> hubContext)
+        public UpdatesController(IHubContext<AbstractGridEventsHub, IGridEventsHubClient> hubContext)
         {
             this._hubContext = hubContext;
         }

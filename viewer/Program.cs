@@ -13,6 +13,8 @@ builder.Services.AddSignalR(options => {
     }
 );
 
+builder.Services.AddScoped<AbstractGridEventsHub, GridEventsHub>();
+
 var app = builder.Build();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
@@ -21,7 +23,7 @@ app.UseCookiePolicy();
 
 app.UseEndpoints(endpoints =>
 {
-    endpoints.MapHub<GridEventsHub>("/hubs/gridevents");
+    endpoints.MapHub<AbstractGridEventsHub>("/hubs/gridevents");
     endpoints.MapControllerRoute(
             name: "default",
             pattern: "{controller=Home}/{action=Index}/{id?}");

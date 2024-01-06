@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -7,9 +6,9 @@ using viewer.Models;
 
 namespace viewer.Hubs
 {
-    public class GridEventsHub : Hub<IGridEventsHubClient>
+    internal class GridEventsHub : AbstractGridEventsHub
     {
-        public async Task BindSession(string folder, string sessionId = null)
+        public override async Task BindSession(string folder, string sessionId = null)
         {
             if (string.IsNullOrEmpty(sessionId))
             {
@@ -27,7 +26,7 @@ namespace viewer.Hubs
             });
         }
 
-        public async Task Subscribe(string subject)
+        public override async Task Subscribe(string subject)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, subject);
             await Clients.Group(subject).GridUpdate(new GridUpdateModel()
@@ -45,7 +44,7 @@ namespace viewer.Hubs
             });
         }
 
-        public async Task Unsubscribe(string subject)
+        public override async Task Unsubscribe(string subject)
         {
             await Clients.Group(subject).GridUpdate(new GridUpdateModel()
             {
