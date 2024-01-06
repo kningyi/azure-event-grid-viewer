@@ -13,7 +13,9 @@ namespace viewer.Hubs
         {
             if (string.IsNullOrEmpty(sessionId))
             {
-                sessionId = Path.Combine(folder, string.Concat(new Random().Next().ToString("x"), DateTime.UtcNow.Ticks.ToString())).Replace('\\', '/');
+                sessionId = Path.Combine(folder, string.Concat(new Random().Next().ToString("x"), DateTime.UtcNow.Ticks.ToString()))
+                    .Replace(@"\\", @"/")
+                    .Trim('/');
             }
             await Groups.AddToGroupAsync(Context.ConnectionId, sessionId);
             await Clients.Caller.Identification(new IdentityModel()
