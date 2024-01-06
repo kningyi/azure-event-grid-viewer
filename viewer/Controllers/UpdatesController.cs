@@ -242,7 +242,7 @@ namespace viewer.Controllers
                     if (!string.IsNullOrEmpty(model.Url))
                     {
                         model.Session = Path.GetDirectoryName(new Uri(model.Url).LocalPath)
-                            .Replace(@"\\", @"/")
+                            .Replace('\\', '/')
                             .Trim('/');
                     }
                 }

@@ -14,7 +14,7 @@ namespace viewer.Hubs
             if (string.IsNullOrEmpty(sessionId))
             {
                 sessionId = Path.Combine(folder, string.Concat(new Random().Next().ToString("x"), DateTime.UtcNow.Ticks.ToString()))
-                    .Replace(@"\\", @"/")
+                    .Replace('\\', '/')
                     .Trim('/');
             }
             await Groups.AddToGroupAsync(Context.ConnectionId, sessionId);
