@@ -6,6 +6,7 @@ namespace viewer.Models
     {
         string Id { get; set; }
         string Type { get; set; }
+        string Source { get; set; }
         string Subject { get; set; }
         DateTime Time { get; set; }
         T Data { get; set; }

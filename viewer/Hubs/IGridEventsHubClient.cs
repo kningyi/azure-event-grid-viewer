@@ -5,6 +5,7 @@ namespace viewer.Hubs
 {
     public interface IGridEventsHubClient
     {
-        Task GridUpdate(GridUpdateModel data);
+        Task GridUpdate(GridUpdateModel data); 
+        Task Identification(IdentityModel identity);
     }
 }

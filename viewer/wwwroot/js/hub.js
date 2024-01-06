@@ -1,4 +1,5 @@
 var hubConnection;
+var hubSessionId;
 var connectionAttempts = 0;
 
 var watcherClear = function (detailsId) {
@@ -88,6 +89,11 @@ var watcherInit = function (templateId, detailsId, subscriberId, clearId) {
 
   // ensure handlers registered before connection
 
+  hubConnection.on('identification', function (identity) {
+    console.log(identity);
+    hubSessionId = identity.sessionId;
+  });
+
   hubConnection.on('gridupdate', function (evt) {
     console.log(evt);
     watcherAddEvent(templateId, detailsId, evt.id, evt.type, evt.subject, evt.time, evt.data);
@@ -99,7 +105,9 @@ var watcherInit = function (templateId, detailsId, subscriberId, clearId) {
     try {
       connectionAttempts = connectionAttempts + 1;
       await hubConnection.start();
-      console.log("hub connected.");
+      console.assert(connection.state === signalR.HubConnectionState.Connected, connection.state);
+      await hubConnection.invoke("BindSession", hubSessionId);
+      console.log("session bound.");
     } catch (err) {
       console.error(err);
       setTimeout(() => startHub(), 5000 + connectionAttempts * 5000);
