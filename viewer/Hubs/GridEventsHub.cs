@@ -13,13 +13,12 @@ namespace viewer.Hubs
         {
             if (string.IsNullOrEmpty(sessionId))
             {
-                sessionId = Guid.NewGuid().ToString("N").Substring(0, 6) + DateTime.UtcNow.Ticks.ToString();
+                sessionId = string.Join("/", folder, string.Concat(new Random().Next().ToString("x"), DateTime.UtcNow.Ticks.ToString())).Trim('/');
             }
-            var group = string.Join("/", folder, sessionId).Trim('/');
-            await Groups.AddToGroupAsync(Context.ConnectionId, group);
+            await Groups.AddToGroupAsync(Context.ConnectionId, sessionId);
             await Clients.Caller.Identification(new IdentityModel()
             {
-                SessionId = group,
+                SessionId = sessionId,
                 ConnectionId = Context.ConnectionId,
                 User = Context.User?.Identity,
                 UserId = Context.UserIdentifier,
