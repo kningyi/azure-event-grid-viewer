@@ -14,6 +14,7 @@ builder.Services.AddSignalR(options => {
 );
 
 builder.Services.AddScoped<AbstractGridEventsHub, GridEventsHub>();
+builder.Services.AddScoped<IGridEventHubService, GridEventHubService>();
 
 var app = builder.Build();
 app.UseHttpsRedirection();
