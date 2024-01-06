@@ -4,6 +4,7 @@ using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using viewer.Hubs;
@@ -128,14 +129,40 @@ namespace viewer.Controllers
             return null;
         }
 
-        private async Task SendMessage(GridUpdateModel data)
+        private async Task SendMessage(GridUpdateModel data, dynamic innerData = null)
         {
             await this._hubContext.Clients.All.GridUpdate(data);
-            if (!string.IsNullOrEmpty(data.Subject))
+
+            if (innerData == null)
             {
-                var group = data.Subject;
-                data.Subject = string.Concat("Group - ", data.Subject);
-                await this._hubContext.Clients.Group(group).GridUpdate(data);
+                return;
+            }
+
+            string etag = innerData.eTag;
+            if (!string.IsNullOrEmpty(etag))
+            {
+                data.Subject = string.Concat(etag, "-", data.Subject);
+                await this._hubContext.Clients.Group(etag).GridUpdate(data);
+            }
+
+            if (!string.IsNullOrEmpty(data.Type))
+            {
+                string url = null;
+                if (data.Type == "Microsoft.Security.MalwareScanningResult")
+                {
+                    url = innerData.blobUri;
+                }
+                else if (data.Type.StartsWith("Microsoft.Storage.Blob"))
+                {
+                    url = innerData.url;
+                }
+                if (string.IsNullOrEmpty(url))
+                {
+                    return;
+                }
+                var dir = Path.GetDirectoryName(new Uri(url).LocalPath).Trim('/');
+                data.Subject = string.Concat(dir, "-", data.Subject);
+                await this._hubContext.Clients.Group(dir).GridUpdate(data);
             }
         }
 
@@ -161,7 +188,7 @@ namespace viewer.Controllers
             foreach (var details in detailCollection)
             {
                 var data = GetGridUpdateModel(details, jsonContent, nameof(HandleGridEvents));
-                await SendMessage(data);
+                await SendMessage(data, details.Data);
             }
             return Ok();
         }
@@ -174,14 +201,14 @@ namespace viewer.Controllers
                 foreach(var details in detailCollection)
                 {
                     var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents));
-                    await SendMessage(data);
+                    await SendMessage(data, details.Data);
                 }
             }
             else
             {
                 var details = JsonConvert.DeserializeObject<CloudEvent<dynamic>>(jsonContent);
                 var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents));
-                await SendMessage(data);
+                await SendMessage(data, details.Data);
             }
 
             return Ok();

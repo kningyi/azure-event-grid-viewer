@@ -106,7 +106,7 @@ var watcherInit = function (templateId, detailsId, subscriberId, clearId) {
       connectionAttempts = connectionAttempts + 1;
       await hubConnection.start();
       console.assert(connection.state === signalR.HubConnectionState.Connected, connection.state);
-      await hubConnection.invoke("BindSession", hubSessionId);
+      await hubConnection.invoke("BindSession", "temp/userA", hubSessionId);
       console.log("session bound.");
     } catch (err) {
       console.error(err);
