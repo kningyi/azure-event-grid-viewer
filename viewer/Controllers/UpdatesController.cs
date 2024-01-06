@@ -2,12 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using viewer.Hubs;
 using viewer.Models;
@@ -17,10 +14,6 @@ namespace viewer.Controllers
     [Route("api/[controller]")]
     public class UpdatesController : Controller
     {
-        private const string EventTypeHeaderName = "aeg-event-type";
-        private const string EventTypeSubscriptionValidation = "SubscriptionValidation";
-        private const string EventTypeNotification = "Notification";
-
         #region Data Members
 
         private readonly IHubContext<GridEventsHub, IGridEventsHubClient> _hubContext;
@@ -38,17 +31,19 @@ namespace viewer.Controllers
 
         #region Public Methods
 
+        /// <summary>
+        /// cloud event subscription validation
+        /// </summary>
         [HttpOptions]
-        public async Task<IActionResult> Options()
+        public async Task<IActionResult> Options([FromBody] string content = null)
         {
-            using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
-            {
-                var webhookRequestOrigin = HttpContext.Request.Headers["WebHook-Request-Origin"].FirstOrDefault();
-                var webhookRequestCallback = HttpContext.Request.Headers["WebHook-Request-Callback"];
-                var webhookRequestRate = HttpContext.Request.Headers["WebHook-Request-Rate"];
-                HttpContext.Response.Headers.Add("WebHook-Allowed-Rate", "*");
-                HttpContext.Response.Headers.Add("WebHook-Allowed-Origin", webhookRequestOrigin);
-            }
+            var requestHeaders = HttpContext.Request.Headers;
+            var webhookRequestOrigin = requestHeaders["WebHook-Request-Origin"].FirstOrDefault();
+            var webhookRequestCallback = requestHeaders["WebHook-Request-Callback"];
+            var webhookRequestRate = requestHeaders["WebHook-Request-Rate"];
+
+            HttpContext.Response.Headers.Add("WebHook-Allowed-Rate", "*");
+            HttpContext.Response.Headers.Add("WebHook-Allowed-Origin", webhookRequestOrigin);
 
             var data = new GridUpdateModel()
             {
@@ -58,7 +53,8 @@ namespace viewer.Controllers
                 Data = JsonConvert.SerializeObject(new
                 {
                     Method = "Options",
-                    request = Request.Headers,
+                    request = requestHeaders,
+                    Content = content,
                 }, Formatting.Indented),
             };
 
@@ -70,6 +66,7 @@ namespace viewer.Controllers
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] string jsonContent)
         {
+            // invalid content type
             if (string.IsNullOrEmpty(jsonContent) || !IsValidContentType(out bool isCloudEvent))
             {
                 return BadRequest();
@@ -77,31 +74,24 @@ namespace viewer.Controllers
 
             try
             {
-                var eventType = GetEventType();
-
-                // Check the event type.
-                // Return the validation code if it's 
-                // a subscription validation request. 
-                if (eventType == EventTypeSubscriptionValidation)
+                // resolve cloud event notifications
+                if (isCloudEvent)
                 {
-                    if (isCloudEvent)
-                    {
-                        return await HandleValidationForCloudEvent(jsonContent);
-                    }
-                    return await HandleValidation(jsonContent);
+                    return await HandleCloudEvents(jsonContent);
                 }
-                else if (eventType == EventTypeNotification)
-                {
-                    // Check to see if this is passed in using
-                    // the CloudEvents schema
-                    if (isCloudEvent)
-                    {
-                        return await HandleCloudEvent(jsonContent);
-                    }
 
+                // fallback to resolve azure event grid notifications/subscription validation
+                var eventType = GetAzureEventType();
+                if (eventType == "Notification")
+                {
                     return await HandleGridEvents(jsonContent);
                 }
+                else if (eventType == "SubscriptionValidation")
+                {
+                    return await HandleValidation(jsonContent);
+                }
 
+                // invalid content
                 return BadRequest();
             }
             catch (Exception ex)
@@ -129,11 +119,11 @@ namespace viewer.Controllers
 
         #region Private Methods
 
-        private string? GetEventType()
+        private string GetAzureEventType()
         {
-            if (Request.Headers.ContainsKey(EventTypeHeaderName))
+            if (Request.Headers.ContainsKey("aeg-event-type"))
             {
-                return HttpContext.Request.Headers[EventTypeHeaderName].FirstOrDefault();
+                return HttpContext.Request.Headers["aeg-event-type"].FirstOrDefault();
             }
             return null;
         }
@@ -152,55 +142,9 @@ namespace viewer.Controllers
         private async Task<JsonResult> HandleValidation(string jsonContent)
         {
             IEvent<Dictionary<string, string>> gridEvent = 
-                JsonConvert.DeserializeObject<List<GridEvent<Dictionary<string, string>>>>(jsonContent).First();
+                JsonConvert.DeserializeObject<IEnumerable<GridEvent<Dictionary<string, string>>>>(jsonContent).First();
 
-            var data = new GridUpdateModel()
-            {
-                Id = gridEvent.Id,
-                Type = gridEvent.Type,
-                Subject = gridEvent.Subject,
-                Time = gridEvent.Time.ToLongTimeString(),
-                Data = JsonConvert.SerializeObject(new
-                {
-                    method = "HandleValidation",
-                    itemContent = gridEvent,
-                    rawContent = JsonConvert.DeserializeObject(jsonContent),
-                    request = Request.Headers,
-                }, Formatting.Indented)
-            };
-
-            await SendMessage(data);
-
-            // Retrieve the validation code and echo back.
-            var validationCode = gridEvent.Data["validationCode"];
-            return new JsonResult(new
-            {
-                validationResponse = validationCode
-            });
-        }
-
-        private async Task<JsonResult> HandleValidationForCloudEvent(string jsonContent)
-        {
-            var gridEvent = jsonContent.TrimStart().StartsWith("[")
-                    ? JsonConvert.DeserializeObject<List<CloudEvent<Dictionary<string, string>>>>(jsonContent).First()
-                    : JsonConvert.DeserializeObject<CloudEvent<Dictionary<string, string>>>(jsonContent)
-                    ;
-
-            var data = new GridUpdateModel()
-            {
-                Id = gridEvent.Id,
-                Type = gridEvent.Type,
-                Subject = gridEvent.Subject,
-                Time = gridEvent.Time.ToLongTimeString(),
-                Data = JsonConvert.SerializeObject(new
-                {
-                    method = "HandleValidationForCloudEvent",
-                    itemContent = gridEvent,
-                    rawContent = JsonConvert.DeserializeObject(jsonContent),
-                    request = Request.Headers,
-                }, Formatting.Indented)
-            };
-
+            var data = GetGridUpdateModel(gridEvent, jsonContent, nameof(HandleValidation));
             await SendMessage(data);
 
             // Retrieve the validation code and echo back.
@@ -213,104 +157,52 @@ namespace viewer.Controllers
 
         private async Task<IActionResult> HandleGridEvents(string jsonContent)
         {
-            var events = JArray.Parse(jsonContent);
-            foreach (var e in events)
+            var detailCollection = JsonConvert.DeserializeObject<IEnumerable<GridEvent<dynamic>>>(jsonContent);
+            foreach (var details in detailCollection)
             {
-                // Invoke a method on the clients for 
-                // an event grid notiification.                 
-                var details = JsonConvert.DeserializeObject<GridEvent<dynamic>>(e.ToString());
-
-                var data = new GridUpdateModel()
-                {
-                    Id = details.Id,
-                    Type = details.Type,
-                    Subject = details.Subject,
-                    Time = details.Time.ToLongTimeString(),
-                    Data = JsonConvert.SerializeObject(new
-                    {
-                        method = "HandleGridEvents",
-                        itemContent = details,
-                        rawContent = JsonConvert.DeserializeObject(jsonContent),
-                        request = Request.Headers,
-                    }, Formatting.Indented),
-                };
-
+                var data = GetGridUpdateModel(details, jsonContent, nameof(HandleGridEvents));
                 await SendMessage(data);
             }
-
             return Ok();
         }
 
-        private async Task<IActionResult> HandleCloudEvent(string jsonContent)
+        private async Task<IActionResult> HandleCloudEvents(string jsonContent)
         {
             if (jsonContent.TrimStart().StartsWith('['))
             {
                 var detailCollection = JsonConvert.DeserializeObject<IEnumerable<CloudEvent<dynamic>>>(jsonContent);
                 foreach(var details in detailCollection)
                 {
-                    var data = new GridUpdateModel()
-                    {
-                        Id = details.Id,
-                        Type = details.Type,
-                        Subject = details.Subject,
-                        Time = details.Time.ToLongTimeString(),
-                        Data = JsonConvert.SerializeObject(new
-                        {
-                            method = "HandleCloudEvent",
-                            itemContent = details,
-                            rawContent = JsonConvert.DeserializeObject(jsonContent),
-                            request = Request.Headers,
-                        }, Formatting.Indented),
-                    };
+                    var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents));
                     await SendMessage(data);
                 }
             }
             else
             {
                 var details = JsonConvert.DeserializeObject<CloudEvent<dynamic>>(jsonContent);
-
-                var data = new GridUpdateModel()
-                {
-                    Id = details.Id,
-                    Type = details.Type,
-                    Subject = details.Subject,
-                    Time = details.Time.ToLongTimeString(),
-                    Data = JsonConvert.SerializeObject(new
-                    {
-                        method = "HandleCloudEvent",
-                        itemContent = details,
-                        rawContent = JsonConvert.DeserializeObject(jsonContent),
-                        request = Request.Headers,
-                    }, Formatting.Indented),
-                };
-
+                var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents));
                 await SendMessage(data);
             }
-
 
             return Ok();
         }
 
-        private static bool IsCloudEvent(string jsonContent)
+        private GridUpdateModel GetGridUpdateModel<T>(IEvent<T> details, string jsonContent, string method) where T : class
         {
-            // Cloud events are sent one at a time, while Grid events
-            // are sent in an array. As a result, the JObject.Parse will 
-            // fail for Grid events. 
-            try
+            return new GridUpdateModel()
             {
-                // Attempt to read one JSON object. 
-                var eventData = JObject.Parse(jsonContent);
-
-                // Check for the spec version property.
-                var version = eventData["specversion"].Value<string>();
-                if (!string.IsNullOrEmpty(version)) return true;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
-
-            return false;
+                Id = details.Id,
+                Type = details.Type,
+                Subject = details.Subject,
+                Time = details.Time.ToLongTimeString(),
+                Data = JsonConvert.SerializeObject(new
+                {
+                    method = method,
+                    itemContent = details,
+                    rawContent = JsonConvert.DeserializeObject(jsonContent),
+                    request = Request.Headers,
+                }, Formatting.Indented),
+            };
         }
 
         private bool IsValidContentType(out bool isCloudEvent)
