@@ -15,7 +15,7 @@ namespace viewer.Hubs
             {
                 sessionId = Guid.NewGuid().ToString("N").Substring(0, 6) + DateTime.UtcNow.Ticks.ToString();
             }
-            var group = Path.Combine(folder, sessionId).Trim('/');
+            var group = string.Join("/", folder, sessionId).Trim('/');
             await Groups.AddToGroupAsync(Context.ConnectionId, group);
             await Clients.Caller.Identification(new IdentityModel()
             {
