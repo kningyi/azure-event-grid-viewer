@@ -142,36 +142,18 @@ namespace viewer.Controllers
         {
             await this._hubContext.Clients.All.GridUpdate(data);
 
-            if (innerData == null)
+            var subject = data.Subject;
+
+            if (!string.IsNullOrEmpty(data.ETag))
             {
-                return;
+                data.Subject = string.Concat(data.ETag, "||", subject);
+                await this._hubContext.Clients.Group(data.ETag).GridUpdate(data);
             }
 
-            string etag = innerData.eTag;
-            if (!string.IsNullOrEmpty(etag))
+            if (!string.IsNullOrEmpty(data.Session))
             {
-                data.Subject = string.Concat(etag, "-", data.Subject);
-                await this._hubContext.Clients.Group(etag).GridUpdate(data);
-            }
-
-            if (!string.IsNullOrEmpty(data.Type))
-            {
-                string url = null;
-                if (data.Type == "Microsoft.Security.MalwareScanningResult")
-                {
-                    url = innerData.blobUri;
-                }
-                else if (data.Type.StartsWith("Microsoft.Storage.Blob"))
-                {
-                    url = innerData.url;
-                }
-                if (string.IsNullOrEmpty(url))
-                {
-                    return;
-                }
-                var dir = Path.GetDirectoryName(new Uri(url).LocalPath).Trim('/');
-                data.Subject = string.Concat(dir, "-", data.Subject);
-                await this._hubContext.Clients.Group(dir).GridUpdate(data);
+                data.Subject = string.Concat(data.Session, "||", subject);
+                await this._hubContext.Clients.Group(data.Session).GridUpdate(data);
             }
         }
 
@@ -197,7 +179,7 @@ namespace viewer.Controllers
             foreach (var details in detailCollection)
             {
                 var data = GetGridUpdateModel(details, jsonContent, nameof(HandleGridEvents));
-                await SendMessage(data, details.Data);
+                await SendMessage(data);
             }
             return Ok();
         }
@@ -210,14 +192,14 @@ namespace viewer.Controllers
                 foreach(var details in detailCollection)
                 {
                     var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents));
-                    await SendMessage(data, details.Data);
+                    await SendMessage(data);
                 }
             }
             else
             {
                 var details = JsonConvert.DeserializeObject<CloudEvent<dynamic>>(jsonContent);
                 var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents));
-                await SendMessage(data, details.Data);
+                await SendMessage(data);
             }
 
             return Ok();
@@ -239,6 +221,32 @@ namespace viewer.Controllers
                     request = Request.Headers,
                 }, Formatting.Indented),
             };
+        }
+
+        private GridUpdateModel GetGridUpdateModel(IEvent<dynamic> details, string jsonContent, string method)
+        {
+            var model = GetGridUpdateModel<dynamic>(details, jsonContent, method);
+            if (details.Data != null)
+            {
+                model.ETag = details.Data.eTag;
+                if (!string.IsNullOrEmpty(details.Type))
+                {
+                    if (details.Type == "Microsoft.Security.MalwareScanningResult")
+                    {
+                        model.Url = details.Data.blobUri;
+                    }
+                    else if (details.Type.StartsWith("Microsoft.Storage.Blob"))
+                    {
+                        model.Url = details.Data.url;
+                    }
+                    if (!string.IsNullOrEmpty(model.Url))
+                    {
+                        model.Session = Path.GetDirectoryName(new Uri(model.Url).LocalPath).Trim();
+                    }
+                }
+            }
+
+            return model;
         }
 
         private bool IsValidContentType(out bool isCloudEvent)
