@@ -180,15 +180,17 @@ namespace viewer.Hubs
             var model = GetGridUpdateModel<dynamic>(details, jsonContent, method, request);
             if (details.Data != null)
             {
-                model.ETag = details.Data.eTag;
                 if (!string.IsNullOrEmpty(details.Type))
                 {
                     if (details.Type == "Microsoft.Security.MalwareScanningResult")
                     {
-                        model.Url = details.Data.blobUri;
+                        var innerData = (ScanResultDto) details.Data;
+                        model.ETag = innerData.ETag;
+                        model.Url = innerData.Url;
                     }
                     else if (details.Type.StartsWith("Microsoft.Storage.Blob"))
                     {
+                        model.ETag = details.Data.eTag;
                         model.Url = details.Data.url;
                     }
                     if (!string.IsNullOrEmpty(model.Url))
