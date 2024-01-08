@@ -3,13 +3,10 @@ using System;
 
 namespace viewer.Models
 {
-    public class GridEvent<T> : IEvent<T> where T: class
+    public class GridEvent<T> : GridEventSnippet, IEvent<T> where T: class
     {
         [JsonProperty("id")]
         public string Id { get; set; }
-
-        [JsonProperty("eventType")]
-        public string Type { get; set; }
 
         [JsonProperty("topic")]
         public string Source { get; set; }
@@ -22,6 +19,5 @@ namespace viewer.Models
 
         [JsonProperty("data")]
         public T Data { get; set; }
-
     }
 }

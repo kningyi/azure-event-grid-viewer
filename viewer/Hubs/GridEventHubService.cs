@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using viewer.Models;
 
@@ -130,10 +132,25 @@ namespace viewer.Hubs
 
         private async Task HandleGridEvents(string jsonContent, HttpRequest request)
         {
-            var detailCollection = JsonConvert.DeserializeObject<IEnumerable<GridEvent<dynamic>>>(jsonContent);
-            foreach (var details in detailCollection)
+            var items = JsonConvert.DeserializeObject<IEnumerable<GridEvent<dynamic>>>(jsonContent);
+            foreach (var details in items)
             {
-                var data = GetGridUpdateModel(details, jsonContent, nameof(HandleGridEvents), request);
+                string url = null;
+                string etag = null;
+                if (details.Data != null)
+                {
+                    if (details.Type == "Microsoft.Security.MalwareScanningResult")
+                    {
+                        url = details.Data.blobUri;
+                        etag = details.Data.eTag;
+                    }
+                    else if (details.Type.StartsWith("Microsoft.Storage."))
+                    {
+                        url = details.Data.url;
+                        etag = details.Data.eTag;
+                    }
+                }
+                var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents), request, etag, url);
                 await SendMessage(data);
             }
         }
@@ -142,29 +159,58 @@ namespace viewer.Hubs
         {
             if (jsonContent.TrimStart().StartsWith('['))
             {
-                var detailCollection = JsonConvert.DeserializeObject<IEnumerable<CloudEvent<object>>>(jsonContent);
-                foreach (var details in detailCollection)
+                var items = JArray.Parse(jsonContent);
+                foreach (var item in items)
                 {
-                    var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents), request);
-                    await SendMessage(data);
+                    var snippet = item.ToObject<CloudEventSnippet>();
+                    if (snippet.Type == "Microsoft.Security.MalwareScanningResult")
+                    {
+                        var details = item.ToObject<CloudEvent<ScanResultDto>>();
+                        var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents), request, details.Data?.ETag, details.Data?.Url);
+                        await SendMessage(data);
+                    }
+                    else if (snippet.Type.StartsWith("Microsoft.Storage."))
+                    {
+                        var details = item.ToObject<CloudEvent<dynamic>>();
+                        var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents), request, details.Data?.eTag, details.Data?.url);
+                        await SendMessage(data);
+                    }
                 }
             }
             else
             {
-                var details = JsonConvert.DeserializeObject<CloudEvent<object>>(jsonContent);
-                var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents), request);
-                await SendMessage(data);
+                var snippet = JsonConvert.DeserializeObject<CloudEventSnippet>(jsonContent);
+                if (snippet.Type == "Microsoft.Security.MalwareScanningResult")
+                {
+                    var details = JsonConvert.DeserializeObject<CloudEvent<ScanResultDto>>(jsonContent);
+                    var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents), request, details.Data?.ETag, details.Data?.Url);
+                    await SendMessage(data);
+                }
+                else if (snippet.Type.StartsWith("Microsoft.Storage."))
+                {
+                    var details = JsonConvert.DeserializeObject<CloudEvent<dynamic>>(jsonContent);
+                    var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents), request, details.Data?.eTag, details.Data?.url);
+                    await SendMessage(data);
+                }
             }
         }
 
-        private GridUpdateModel GetGridUpdateModel<T>(IEvent<T> details, string jsonContent, string method, HttpRequest request) where T : class
+        private GridUpdateModel GetGridUpdateModel<T>(IEvent<T> details, string jsonContent, string method, HttpRequest request, string etag = null, string url = null) where T : class
         {
+            if (!string.IsNullOrEmpty(url))
+            {
+                url = Path.GetDirectoryName(new Uri(url).LocalPath)
+                    .Replace('\\', '/')
+                    .Trim('/');
+            }
             return new GridUpdateModel()
             {
                 Id = details.Id,
                 Type = details.Type,
                 Subject = details.Subject,
                 Time = details.Time.ToLongTimeString(),
+                ETag = etag,
+                Url = url,
                 Data = JsonConvert.SerializeObject(new
                 {
                     method = method,
@@ -173,38 +219,6 @@ namespace viewer.Hubs
                     request = request?.Headers,
                 }, Formatting.Indented),
             };
-        }
-
-        private GridUpdateModel GetGridUpdateModel(IEvent<object> details, string jsonContent, string method, HttpRequest request)
-        {
-            var model = GetGridUpdateModel<object>(details, jsonContent, method, request);
-            if (details.Data != null)
-            {
-                if (!string.IsNullOrEmpty(details.Type))
-                {
-
-                    if (details.Type == "Microsoft.Security.MalwareScanningResult")
-                    {
-                        var innerData = details.Data as ScanResultDto;
-                        model.ETag = innerData.ETag;
-                        model.Url = innerData.Url;
-                    }
-                    else if (details.Type.StartsWith("Microsoft.Storage.Blob"))
-                    {
-                        var innerData = details.Data as dynamic;
-                        model.ETag = innerData.eTag;
-                        model.Url = innerData.url;
-                    }
-                    if (!string.IsNullOrEmpty(model.Url))
-                    {
-                        model.Session = Path.GetDirectoryName(new Uri(model.Url).LocalPath)
-                            .Replace('\\', '/')
-                            .Trim('/');
-                    }
-                }
-            }
-
-            return model;
         }
 
         private bool IsValidContentType(HttpRequest request, out bool isCloudEvent)
