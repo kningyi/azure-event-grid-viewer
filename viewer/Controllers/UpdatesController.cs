@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using viewer.Hubs;
@@ -9,7 +8,7 @@ using viewer.Hubs;
 namespace viewer.Controllers
 {
     [Route("api/[controller]")]
-    public class UpdatesController : Controller
+    public class UpdatesController : HubControllerBase
     {
         #region Data Members
 
@@ -28,30 +27,9 @@ namespace viewer.Controllers
 
         #region Public Methods
 
-        /// <summary>
-        /// cloud event subscription validation
-        /// </summary>
-        [HttpOptions]
-        public async Task<IActionResult> Options()
-        {
-            using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
-            {
-                var requestHeaders = HttpContext.Request.Headers;
-                var webhookRequestOrigin = requestHeaders["WebHook-Request-Origin"].FirstOrDefault();
-                var webhookRequestCallback = requestHeaders["WebHook-Request-Callback"];
-                var webhookRequestRate = requestHeaders["WebHook-Request-Rate"];
-
-                HttpContext.Response.Headers.Add("WebHook-Allowed-Rate", "*");
-                HttpContext.Response.Headers.Add("WebHook-Allowed-Origin", webhookRequestOrigin);
-
-                await _hub.Broadcast("HttpOptions", content: Request.Headers);
-            }
-
-            return Ok();
-        }
 
         [HttpPost]
-        public async Task<IActionResult> Post()
+        public override async Task<IActionResult> Post()
         {
             try
             {

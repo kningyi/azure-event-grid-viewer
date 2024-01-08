@@ -8,13 +8,12 @@ builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 //builder.Services.AddSignalR();
 
-builder.Services.AddSignalR(options => {
-        options.EnableDetailedErrors = true; 
-    }
-);
+builder.Services.AddSignalR(options => 
+{
+    options.EnableDetailedErrors = true;
+});
 
-builder.Services.AddScoped<AbstractGridEventsHub, GridEventsHub>();
-builder.Services.AddScoped<IGridEventHubService, GridEventHubService>();
+builder.AddFileWatcher();
 
 var app = builder.Build();
 app.UseHttpsRedirection();
@@ -24,7 +23,7 @@ app.UseCookiePolicy();
 
 app.UseEndpoints(endpoints =>
 {
-    endpoints.MapHub<AbstractGridEventsHub>("/hubs/gridevents");
+    endpoints.MapFileWatcherHub("/hubs/gridevents");
     endpoints.MapControllerRoute(
             name: "default",
             pattern: "{controller=Home}/{action=Index}/{id?}");
