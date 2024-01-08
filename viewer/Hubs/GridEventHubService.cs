@@ -142,7 +142,7 @@ namespace viewer.Hubs
         {
             if (jsonContent.TrimStart().StartsWith('['))
             {
-                var detailCollection = JsonConvert.DeserializeObject<IEnumerable<CloudEvent<dynamic>>>(jsonContent);
+                var detailCollection = JsonConvert.DeserializeObject<IEnumerable<CloudEvent<object>>>(jsonContent);
                 foreach (var details in detailCollection)
                 {
                     var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents), request);
@@ -151,7 +151,7 @@ namespace viewer.Hubs
             }
             else
             {
-                var details = JsonConvert.DeserializeObject<CloudEvent<dynamic>>(jsonContent);
+                var details = JsonConvert.DeserializeObject<CloudEvent<object>>(jsonContent);
                 var data = GetGridUpdateModel(details, jsonContent, nameof(HandleCloudEvents), request);
                 await SendMessage(data);
             }
@@ -175,23 +175,25 @@ namespace viewer.Hubs
             };
         }
 
-        private GridUpdateModel GetGridUpdateModel(IEvent<dynamic> details, string jsonContent, string method, HttpRequest request)
+        private GridUpdateModel GetGridUpdateModel(IEvent<object> details, string jsonContent, string method, HttpRequest request)
         {
-            var model = GetGridUpdateModel<dynamic>(details, jsonContent, method, request);
+            var model = GetGridUpdateModel<object>(details, jsonContent, method, request);
             if (details.Data != null)
             {
                 if (!string.IsNullOrEmpty(details.Type))
                 {
+
                     if (details.Type == "Microsoft.Security.MalwareScanningResult")
                     {
-                        var innerData = (ScanResultDto) details.Data;
+                        var innerData = details.Data as ScanResultDto;
                         model.ETag = innerData.ETag;
                         model.Url = innerData.Url;
                     }
                     else if (details.Type.StartsWith("Microsoft.Storage.Blob"))
                     {
-                        model.ETag = details.Data.eTag;
-                        model.Url = details.Data.url;
+                        var innerData = details.Data as dynamic;
+                        model.ETag = innerData.eTag;
+                        model.Url = innerData.url;
                     }
                     if (!string.IsNullOrEmpty(model.Url))
                     {
