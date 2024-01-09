@@ -8,7 +8,7 @@
         public string Time { get; set; }
         public string ETag { get; set; }
         public string Url { get; set; }
-        public string Session { get; set; }
+        public string Subscription { get; set; }
         public string Data { get; set; }
     }
 }

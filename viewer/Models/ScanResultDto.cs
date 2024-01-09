@@ -1,23 +1,13 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 
 namespace viewer.Models
 {
     public class ScanResultDto
     {
-        [JsonProperty("correlationId")]
-        public string CorrelationId { get; set; }
-
-        [JsonProperty("blobUri")]
-        public string Url { get; set; }
-
-        [JsonProperty("eTag")]
+        public string Id { get; set; }
         public string ETag { get; set; }
-
-        [JsonProperty("scanFinishedTimeUtc")]
+        public string Url { get; set; }
         public DateTime? FinishedTime { get; set; }
-
-        [JsonProperty("scanResultType")]
-        public string Result { get; set; }
+        public bool Passed { get; set; }
     }
 }

@@ -89,7 +89,7 @@ var watcherInit = function (templateId, detailsId, subscriberId, clearId) {
 
   // ensure handlers registered before connection
 
-  hubConnection.on('identification', function (identity) {
+  hubConnection.on('subscription', function (identity) {
     console.log(identity);
     hubSessionId = identity.sessionId;
   });

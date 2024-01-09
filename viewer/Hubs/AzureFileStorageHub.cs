@@ -6,7 +6,7 @@ using viewer.Models;
 
 namespace viewer.Hubs
 {
-    internal class GridEventsHub : AbstractGridEventsHub
+    internal class AzureFileStorageHub : AbstractFileStorageHub
     {
         public override async Task BindSession(string folder, string sessionId = null)
         {
@@ -17,9 +17,9 @@ namespace viewer.Hubs
                     .Trim('/');
             }
             await Groups.AddToGroupAsync(Context.ConnectionId, sessionId);
-            await Clients.Caller.Identification(new IdentityModel()
+            await Clients.Caller.Subscription(new HubSubscriptionDto()
             {
-                SessionId = sessionId,
+                FolderPath = sessionId,
                 ConnectionId = Context.ConnectionId,
                 User = Context.User?.Identity,
                 UserId = Context.UserIdentifier,
@@ -35,7 +35,7 @@ namespace viewer.Hubs
                 Type = "Subject Subscription",
                 Subject = subject,
                 Time = DateTime.Now.ToString(),
-                Data = JsonConvert.SerializeObject(new IdentityModel()
+                Data = JsonConvert.SerializeObject(new HubSubscriptionDto()
                 {
                     ConnectionId = Context.ConnectionId,
                     User = Context.User?.Identity,
@@ -52,7 +52,7 @@ namespace viewer.Hubs
                 Type = "Subject Unsubscription",
                 Subject = subject,
                 Time = DateTime.Now.ToString(),
-                Data = JsonConvert.SerializeObject(new IdentityModel()
+                Data = JsonConvert.SerializeObject(new HubSubscriptionDto()
                 {
                     ConnectionId = Context.ConnectionId,
                     User = Context.User?.Identity,

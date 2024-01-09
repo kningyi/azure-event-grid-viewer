@@ -8,7 +8,7 @@ namespace viewer.Hubs
     {
         public static WebApplicationBuilder AddFileWatcher(this WebApplicationBuilder builder)
         {
-            builder.Services.AddScoped<AbstractGridEventsHub, GridEventsHub>();
+            builder.Services.AddScoped<AbstractFileStorageHub, AzureFileStorageHub>();
             builder.Services.AddScoped<IGridEventHubService, GridEventHubService>();
 
             return builder;
@@ -16,7 +16,7 @@ namespace viewer.Hubs
 
         public static IEndpointRouteBuilder MapFileWatcherHub(this IEndpointRouteBuilder endpoints, string url)
         {
-            endpoints.MapHub<AbstractGridEventsHub>(url);
+            endpoints.MapHub<AbstractFileStorageHub>(url);
 
             return endpoints;
         }

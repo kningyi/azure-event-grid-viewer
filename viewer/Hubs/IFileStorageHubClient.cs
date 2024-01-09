@@ -3,9 +3,9 @@ using viewer.Models;
 
 namespace viewer.Hubs
 {
-    public interface IGridEventsHubClient
+    public interface IFileStorageHubClient
     {
         Task GridUpdate(GridUpdateModel data); 
-        Task Identification(IdentityModel identity);
+        Task Subscription(HubSubscriptionDto identity);
     }
 }

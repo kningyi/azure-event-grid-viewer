@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace viewer.Hubs
 {
-    public abstract class AbstractGridEventsHub : Hub<IGridEventsHubClient>
+    public abstract class AbstractFileStorageHub : Hub<IFileStorageHubClient>
     {
         public abstract Task BindSession(string folder, string sessionId = null);
 
